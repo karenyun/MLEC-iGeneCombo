@@ -1,0 +1,100 @@
+{
+    "name": "MyProject",
+    "n_gpu": 1,
+    "mode": "",
+    "saved_path": "",
+    "arch": {
+        "type": "MyModel",
+        "args": {
+            "hidden_size": 32,
+            "omics_specific_flag": true,
+            "network_flag": false,
+            "cell_flag": true,
+            "task": "regression",
+            "network_specific": false
+        }
+    },
+    "data_loader": {
+        "type": "CellDataLoader",
+        "args":{
+            "data_dir": "data/",
+            "batch_size": 1024,
+            "shuffle": false,
+            "validation_split": 0.05,
+            "split_method": "split_by_pair",
+            "num_workers": 16,
+            "input_file": "all_gene_pair_comb_add_extra.csv",
+            "all_cells": ["PK1", "PATU8988S", "MEL202","IPC298","HSC5","GI1","HS944T","HS936T", "OVCAR8","786O","HT29","A375","K562","A549","JURKAT","MELJUSO", "22RV1", "SAOS2"],
+            "valid_cells": [],
+            "test_cells": [],
+            "CCLE_exp_file": "omics/new_omics/CCLE_exp_extra_selected.csv",
+            "CCLE_ess_file": "omics/new_omics/CCLE_ess_extra_selected.csv",
+            "CCLE_cn_file": "omics/new_omics/CCLE_cn_extra_selected.csv",
+            "cell_embeds_exp": "omics/new_omics/CCLE_cell_pca_128_embeds_exp.csv",
+            "cell_embeds_ess": "omics/new_omics/CCLE_cell_pca_128_embeds_ess.csv",
+            "network_type": "PPI",
+            "gene_embeds_combined": "omics/new_omics/CCLE_gene_pca_256_embeds.csv",
+            "network_node_embdings": "",
+            "task": "regression", 
+            "thres": -1,
+            "network_specific": false
+        }
+    },
+    "test_data_loader": {
+        "type": "DataLoaderPredict",
+        "args":{
+            "data_dir": "data/",
+            "batch_size": 8192,
+            "shuffle": false,
+            "validation_split": 0.0,
+            "split_method": "split_by_cell",
+            "num_workers": 16,
+            "input_file": "all_gene_pair_comb_add_extra.csv",
+            "test_cells": ["SAOS2"],
+            "CCLE_exp_file": "omics/new_omics/CCLE_exp_extra_selected.csv",
+            "CCLE_ess_file": "omics/new_omics/CCLE_ess_extra_selected.csv",
+            "CCLE_cn_file": "omics/new_omics/CCLE_cn_extra_selected.csv",
+            "cell_embeds_exp": "omics/new_omics/CCLE_cell_pca_128_embeds_exp.csv",
+            "cell_embeds_ess": "omics/new_omics/CCLE_cell_pca_128_embeds_ess.csv",
+	    "kegg_genes_file": [],
+            "network_type": "PPI",
+            "gene_embeds_combined": "omics/new_omics/CCLE_gene_pca_256_embeds.csv",
+            "network_node_embdings": "",
+            "task": "regression", 
+            "thres": -1,
+            "network_specific": false,
+	    "test_mode": "ALL"
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args":{
+            "lr": 0.001,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss": "mse_loss",
+    "metrics": [
+        "mse", "corr"
+    ],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 0.1
+        }
+    },
+    "trainer": {
+        "epochs": 80,
+
+        "save_dir": "checkpoints_SAOS2/",
+        "save_period": 1,
+        "verbosity": 2,
+        
+        "monitor": "max val_corr",
+        "early_stop": 10,
+
+        "tensorboard": true
+    }
+}

@@ -1,0 +1,217 @@
+import torch
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+from base import BaseModel
+from torch_geometric.nn import SAGEConv, GCNConv, to_hetero, BatchNorm, MessagePassing, HANConv, HGTConv, GATConv
+from torch.nn import Parameter as Param
+
+class GCN(MessagePassing):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super().__init__()
+#         self.conv1 = GCNConv(in_channels, hidden_channels)
+#         self.conv2 = GCNConv(hidden_channels, out_channels)
+        self.conv1 = SAGEConv(in_channels, hidden_channels)
+        self.conv2 = SAGEConv(hidden_channels, out_channels)
+#         self.conv1 = GATConv(in_channels, hidden_channels)
+#         self.conv2 = GATConv(hidden_channels, out_channels)
+        self.act1 = nn.LeakyReLU(0.2)
+        self.act2 = nn.LeakyReLU(0.2)
+        
+    def forward(self, x, edge_index):
+#         print("x.shape {}".format(x.shape))
+#         x = self.conv1(x, edge_index).relu()
+#         x = self.conv2(x, edge_index).relu()
+        x = self.act1(self.conv1(x, edge_index))
+#         print("x.shape conv1 {}".format(x.shape))
+        x = self.act2(self.conv2(x, edge_index))
+#         print("x.shape conv2 {}".format(x.shape))
+        return x
+
+class MyModel(nn.Module):
+    def __init__(self, hidden_size, omics_specific_flag, network_flag, cell_flag, task, network_specific):
+        super(MyModel, self).__init__()
+        self.network_flag = network_flag
+        self.omics_specific_flag = omics_specific_flag
+        self.cell_flag = cell_flag
+        self.task = task
+        self.network_specific = network_specific
+
+        if self.cell_flag:
+            self.CCLE_exp_encoder = nn.Sequential(
+                nn.LazyLinear(hidden_size*8),
+                nn.BatchNorm1d(hidden_size*8),
+#                 nn.ReLU(True),
+                nn.LeakyReLU(0.2),
+                nn.LazyLinear(hidden_size*2),
+                nn.BatchNorm1d(hidden_size*2),
+#                 nn.ReLU(True),
+                nn.LeakyReLU(0.2),
+                #nn.Dropout(p=0.5),
+                nn.Linear(hidden_size*2, int(hidden_size/2)),
+                nn.BatchNorm1d(hidden_size//2),
+                nn.LeakyReLU(0.2),
+#                 nn.ReLU(True)
+            )
+
+            self.CCLE_ess_encoder = nn.Sequential(
+                nn.LazyLinear(hidden_size*8),
+                nn.BatchNorm1d(hidden_size*8),
+#                 nn.ReLU(True),
+                nn.LeakyReLU(0.2),
+                nn.LazyLinear(hidden_size*2),
+                nn.BatchNorm1d(hidden_size*2),
+#                 nn.ReLU(True),
+                nn.LeakyReLU(0.2),
+                #nn.Dropout(p=0.5),
+                nn.Linear(hidden_size*2, int(hidden_size/2)),
+                nn.BatchNorm1d(hidden_size//2),
+                nn.LeakyReLU(0.2),
+#                 nn.ReLU(True)
+            )
+
+        if self.omics_specific_flag:
+            self.specific_omics_encoder = nn.Sequential(
+                nn.LazyLinear(hidden_size),
+                nn.BatchNorm1d(hidden_size),
+                nn.LeakyReLU(0.2),
+#                 nn.ReLU(True),
+#                 nn.Sigmoid(),
+#                 nn.LazyLinear(hidden_size*2),
+#                 nn.BatchNorm1d(hidden_size*2),
+#                 nn.LeakyReLU(0.1)
+#                 nn.ReLU(True)
+            )
+
+        if self.network_flag:
+#             self.transform_input = nn.Sequential(
+#                 nn.LazyLinear(hidden_size//2),
+#                 nn.ReLU(True),
+#                 nn.Linear(hidden_size//2, hidden_size),
+#                 nn.ReLU(True)
+#             )
+#             self.network_encoder = GCN(2, hidden_size, hidden_size) # first try 
+#             self.network_encoder = GCN(8*hidden_size, 8*hidden_size, hidden_size//2)  // original
+#             self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size//2)  ##ablation
+            self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size//2)
+#             self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size*2)
+#             self.post_mlp = nn.Sequential(
+#                 nn.Linear(hidden_size*2, hidden_size*2),
+#                 nn.BatchNorm1d(hidden_size*2),
+#                 nn.LeakyReLU(0.2),
+#                 nn.Linear(hidden_size*2, hidden_size//2),
+#                 nn.BatchNorm1d(hidden_size//2),
+#                 nn.LeakyReLU(0.2),
+#                     )
+#             self.network_encoder = GCN(4*hidden_size, 4*hidden_size, hidden_size//2) ####input_size:2/ 32-4*hidden_size, 128-hidden_size, 64-2*hidd
+#             self.network_encoder = GCN(hidden_size, hidden_size, hidden_size//2)
+#             self.network_encoder_pathway = GCN(2*hidden_size, 2*hidden_size, hidden_size)
+            #self.transform_network = nn.Linear(2*hidden_size, hidden_size)
+
+        self.predictor = nn.Sequential(
+            nn.LazyLinear(hidden_size*3),
+            nn.BatchNorm1d(hidden_size*3),
+            nn.LeakyReLU(0.2),
+            nn.LazyLinear(hidden_size*2),
+            nn.BatchNorm1d(hidden_size*2),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(p=0.5),
+            nn.Linear(hidden_size*2, 1)
+        )
+#         self.predictor = nn.Sequential(
+#             nn.LazyLinear(hidden_size*2),
+#             nn.BatchNorm1d(hidden_size*2),
+#             nn.LeakyReLU(0.2),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(hidden_size*2, 1)
+#         )
+#         self.predictor = nn.Sequential(
+#             nn.LazyLinear(hidden_size),
+#             nn.BatchNorm1d(hidden_size),
+#             nn.LeakyReLU(0.2),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(hidden_size, 1)
+#         )
+    
+    def forward(self, inputs, edge_index, node_feats, cell_index=None):
+        cell_input_exp, cell_input_ess, specific_omics_1, specific_omics_2, gene1_idx, gene2_idx = inputs
+#         print('---debug---')
+#         print("node feats shape {}".format(node_feats.shape))
+#         print('---omics1---',specific_omics_1)
+#         print('---omics2---',specific_omics_2)
+
+        if self.cell_flag:
+            enc_cell_exp = self.CCLE_exp_encoder(cell_input_exp)
+            enc_cell_ess = self.CCLE_ess_encoder(cell_input_ess)
+            enc_cell = torch.cat((enc_cell_exp, enc_cell_ess), 1)
+        
+        if self.omics_specific_flag:
+            '''
+            enc_specific_omics_1 = self.specific_omics_encoder(specific_omics_1)
+            enc_specific_omics_2 = self.specific_omics_encoder(specific_omics_2)
+            enc_specific_omics = enc_specific_omics_1 + enc_specific_omics_2
+            '''
+            enc_omics = torch.cat((specific_omics_1, specific_omics_2), dim=1)
+            enc_specific_omics = self.specific_omics_encoder(enc_omics)
+            
+#             enc_specific_omics = torch.cat((enc_specific_omics_1, enc_specific_omics_2), 1)
+            #enc_specific_omics = specific_omics
+
+        if self.network_flag:
+            '''
+            if self.network_specific:
+#                 gene_x = self.transform_input(node_feats)
+                network_x = self.network_encoder(node_feats, edge_index) # bs*#.gene*64
+#                 print("network_x shape {}".format(network_x.shape))
+#                 print("gene1_idx {} and shape is {}".format(gene1_idx, gene1_idx.shape))
+#                 print("gene2_idx {} and shape is {}".format(gene2_idx, gene2_idx.shape))
+                network_gene1_x = torch.gather(network_x, 1, gene1_idx.unsqueeze(-1).unsqueeze(-1).expand(-1,-1,network_x.size(-1))).squeeze(1)
+                network_gene2_x = torch.gather(network_x, 1, gene2_idx.unsqueeze(-1).unsqueeze(-1).expand(-1,-1,network_x.size(-1))).squeeze(1)
+            '''
+#             print("node feats shape {}".format(node_feats.shape))
+            if node_feats.dim() > 2:
+                network_x_list = []
+                x = self.transform_input(node_feats) #add transform input
+                for i in range(node_feats.shape[0]):
+                    
+#                     curr_x = node_feats[i]
+                    curr_x = x[i]
+                    curr_edge = edge_index
+#                     print("i is {}, curr_x shape {}".format(i, curr_x.shape))
+                    new_x = self.network_encoder(curr_x,curr_edge)
+                    network_x_list.append(new_x)
+                network_x = torch.stack(network_x_list, dim=0)
+#                 print("final network shape {}".format(network_x.shape))
+                network_gene1_x = network_x[cell_index, gene1_idx]
+                network_gene2_x = network_x[cell_index, gene2_idx]
+            elif node_feats.dim() == 2:
+#                 print("origianl")
+#                 x = self.transform_input(node_feats) #add transform input
+#                 network_x = self.network_encoder(x, edge_index)
+                network_x = self.network_encoder(node_feats, edge_index)
+                network_gene1_x = network_x[ gene1_idx ]
+                network_gene2_x = network_x[ gene2_idx ]
+#                 network_gene1_x = self.post_mlp(network_gene1_x)
+#                 network_gene2_x = self.post_mlp(network_gene2_x)
+            enc_network_feats = torch.cat((network_gene1_x, network_gene2_x), 1)
+        
+        if self.omics_specific_flag:
+            enc_combined = enc_specific_omics
+
+            if self.network_flag:
+#                 print("enc_combined shape {}".format(enc_combined.shape))
+#                 print("enc_network_feats shape {}".format(enc_network_feats.shape))
+                enc_combined = torch.cat((enc_combined, enc_network_feats), 1)
+
+                if self.cell_flag:
+                    enc_combined = torch.cat((enc_combined, enc_cell), 1)
+            else:
+                if self.cell_flag:
+                    enc_combined = torch.cat((enc_combined, enc_cell), 1)
+#                     output = torch.sum(enc_combined*enc_cell, dim=-1)
+#                     return output
+
+#         enc_combined = torch.cat((enc_combined, specific_omics_1, specific_omics_2), dim=1)
+        output = self.predictor(enc_combined)
+
+        return output.view(-1)
