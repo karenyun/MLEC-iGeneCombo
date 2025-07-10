@@ -75,40 +75,10 @@ class MyModel(nn.Module):
                 nn.LazyLinear(hidden_size),
                 nn.BatchNorm1d(hidden_size),
                 nn.LeakyReLU(0.2),
-#                 nn.ReLU(True),
-#                 nn.Sigmoid(),
-#                 nn.LazyLinear(hidden_size*2),
-#                 nn.BatchNorm1d(hidden_size*2),
-#                 nn.LeakyReLU(0.1)
-#                 nn.ReLU(True)
             )
 
         if self.network_flag:
-#             self.transform_input = nn.Sequential(
-#                 nn.LazyLinear(hidden_size//2),
-#                 nn.ReLU(True),
-#                 nn.Linear(hidden_size//2, hidden_size),
-#                 nn.ReLU(True)
-#             )
-#             self.network_encoder = GCN(2, hidden_size, hidden_size) # first try 
             self.network_encoder = GCN(8*hidden_size, 8*hidden_size, hidden_size//2)  # original
-#             self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size//2)  ##ablation
-            # self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size//2)
-#             self.network_encoder = GCN(2*hidden_size, 8*hidden_size, hidden_size*2)
-            # self.network_encoder = GCN(16*hidden_size, 8*hidden_size, hidden_size//2)
-            # self.network_encoder = GCN(12*hidden_size, 8*hidden_size, hidden_size//2)
-#             self.post_mlp = nn.Sequential(
-#                 nn.Linear(hidden_size*2, hidden_size*2),
-#                 nn.BatchNorm1d(hidden_size*2),
-#                 nn.LeakyReLU(0.2),
-#                 nn.Linear(hidden_size*2, hidden_size//2),
-#                 nn.BatchNorm1d(hidden_size//2),
-#                 nn.LeakyReLU(0.2),
-#                     )
-#             self.network_encoder = GCN(4*hidden_size, 4*hidden_size, hidden_size//2) ####input_size:2/ 32-4*hidden_size, 128-hidden_size, 64-2*hidd
-#             self.network_encoder = GCN(hidden_size, hidden_size, hidden_size//2)
-#             self.network_encoder_pathway = GCN(2*hidden_size, 2*hidden_size, hidden_size)
-            #self.transform_network = nn.Linear(2*hidden_size, hidden_size)
 
         if self.omics_specific_flag and self.network_flag and self.cell_flag:
             self.predictor = nn.Sequential(
