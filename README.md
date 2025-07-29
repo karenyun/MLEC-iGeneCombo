@@ -1,4 +1,4 @@
-# MLEC-iGeneCombi
+# MLEC-iGeneCombo
 
 ### Installtion  
 Main packages should be installed, and `Python>=3.10.14`.
